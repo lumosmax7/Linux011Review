@@ -33,24 +33,24 @@ start:
 ! ok, the read went well so we get current cursor position and save it for
 ! posterity.
 
-	mov	ax,#INITSEG	! this is done in bootsect already, but...
+	mov	ax,#INITSEG	! this is done in bootsect already, but...  //再次设置ds段的位置
 	mov	ds,ax
 	mov	ah,#0x03	! read cursor pos
 	xor	bh,bh
-	int	0x10		! save it in known place, con_init fetches
-	mov	[0],dx		! it from 0x90000.
+	int	0x10		! save it in known place, con_init fetches //得到的光标地址保存在dx中
+	mov	[0],dx		! it from 0x90000. //保存
 
 ! Get memory size (extended mem, kB)
 
-	mov	ah,#0x88
+	mov	ah,#0x88 
 	int	0x15
-	mov	[2],ax
+	mov	[2],ax //0x90002 保存内存大小
 
-! Get video-card data:
+! Get video-card data: //显卡信息
 
-	mov	ah,#0x0f
+	mov	ah,#0x0f  
 	int	0x10
-	mov	[4],bx		! bh = display page
+	mov	[4],bx		! bh = display page 
 	mov	[6],ax		! al = video mode, ah = window width
 
 ! check for EGA/VGA and some config parameters
@@ -62,11 +62,11 @@ start:
 	mov	[10],bx
 	mov	[12],cx
 
-! Get hd0 data
+! Get hd0 data //保存到0x90000:0x0080开始的16个字节
 
 	mov	ax,#0x0000
 	mov	ds,ax
-	lds	si,[4*0x41]
+	lds	si,[4*0x41] 
 	mov	ax,#INITSEG
 	mov	es,ax
 	mov	di,#0x0080
@@ -74,7 +74,7 @@ start:
 	rep
 	movsb
 
-! Get hd1 data
+! Get hd1 data //保存到0x90000:0x0090开始的16个字节
 
 	mov	ax,#0x0000
 	mov	ds,ax
@@ -86,7 +86,7 @@ start:
 	rep
 	movsb
 
-! Check that there IS a hd1 :-)
+! Check that there IS a hd1 :-) //检查是否有第二个硬盘
 
 	mov	ax,#0x01500
 	mov	dl,#0x81
@@ -112,11 +112,11 @@ is_disk1:
 
 	mov	ax,#0x0000
 	cld			! 'direction'=0, movs moves forward
-do_move:
+do_move: //移动到0x00000
 	mov	es,ax		! destination segment
 	add	ax,#0x1000
 	cmp	ax,#0x9000
-	jz	end_move
+	jz	end_move //如果此时ax已经到0x90000,则结束移动
 	mov	ds,ax		! source segment
 	sub	di,di
 	sub	si,si
@@ -127,11 +127,11 @@ do_move:
 
 ! then we load the segment descriptors
 
-end_move:
+end_move:  
 	mov	ax,#SETUPSEG	! right, forgot this at first. didn't work :-)
-	mov	ds,ax
-	lidt	idt_48		! load idt with 0,0
-	lgdt	gdt_48		! load gdt with whatever appropriate
+	mov	ds,ax  //设置此时的代码段指向setup
+	lidt	idt_48		! load idt with 0,0 //加载idt
+	lgdt	gdt_48		! load gdt with whatever appropriate // 加载gdt
 
 ! that was painless, now we enable A20
 

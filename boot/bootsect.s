@@ -3,7 +3,7 @@
 ! 0x3000 is 0x30000 bytes = 196kB, more than enough for current
 ! versions of linux
 !
-SYSSIZE = 0x3000
+SYSSIZE = 0x3000 #定义system模块的长度 段地址
 !
 !	bootsect.s		(C) 1991 Linus Torvalds
 !
@@ -31,89 +31,89 @@ begdata:
 begbss:
 .text
 
-SETUPLEN = 4				! nr of setup-sectors
-BOOTSEG  = 0x07c0			! original address of boot-sector
-INITSEG  = 0x9000			! we move boot here - out of the way
-SETUPSEG = 0x9020			! setup starts here
-SYSSEG   = 0x1000			! system loaded at 0x10000 (65536).
+SETUPLEN = 4				! nr of setup-sectors  //setup的扇区数目的值
+BOOTSEG  = 0x07c0			! original address of boot-sector //bootseg的段地址 以下都是段地址
+INITSEG  = 0x9000			! we move boot here - out of the way //转移之后bootseg的地址
+SETUPSEG = 0x9020			! setup starts here //setup的地址
+SYSSEG   = 0x1000			! system loaded at 0x10000 (65536). //system地址
 ENDSEG   = SYSSEG + SYSSIZE		! where to stop loading
 
 ! ROOT_DEV:	0x000 - same type of floppy as boot.
 !		0x301 - first partition on first drive etc
-ROOT_DEV = 0x306
+ROOT_DEV = 0x306 //这里指定的是根文件系统设备(第几个硬盘,第几个分区)
 
 entry start
 start:
 	mov	ax,#BOOTSEG
-	mov	ds,ax
+	mov	ds,ax      //设置此时的bootseg段地址到ds
 	mov	ax,#INITSEG
-	mov	es,ax
-	mov	cx,#256
-	sub	si,si
-	sub	di,di
-	rep
+	mov	es,ax  //设置此时initseg段地址到es
+	mov	cx,#256  //循环的次数,执行256次
+	sub	si,si //ds:si 将ds的偏移地址设为0
+	sub	di,di //es::di 将es的偏移地址设为0
+	rep //执行movw的操作256次
 	movw
-	jmpi	go,INITSEG
-go:	mov	ax,cs
-	mov	ds,ax
-	mov	es,ax
+	jmpi	go,INITSEG // 段间跳转, 此时, CS段地址是INITSEG, 偏移地址是go,
+go:	mov	ax,cs  
+	mov	ds,ax //将cs段地址给ds
+	mov	es,ax //将cs段地址es
 ! put stack at 0x9ff00.
-	mov	ss,ax
-	mov	sp,#0xFF00		! arbitrary value >>512
+	mov	ss,ax  //将cs地址给ss
+	mov	sp,#0xFF00		! arbitrary value >>512  //使得ss的栈大于system +setup区域, (0x200+0x200*4+堆栈大小)
 
 ! load the setup-sectors directly after the bootblock.
 ! Note that 'es' is already set up.
 
-load_setup:
-	mov	dx,#0x0000		! drive 0, head 0
-	mov	cx,#0x0002		! sector 2, track 0
-	mov	bx,#0x0200		! address = 512, in INITSEG
-	mov	ax,#0x0200+SETUPLEN	! service 2, nr of sectors
-	int	0x13			! read it
-	jnc	ok_load_setup		! ok - continue
+load_setup: //这里吧setup的数据读入到0x90000处
+	mov	dx,#0x0000		! drive 0, head 0  //设置读入磁盘的位置
+	mov	cx,#0x0002		! sector 2, track 0 //同上
+	mov	bx,#0x0200		! address = 512, in INITSEG // ES:BX缓冲地址,读入的目标位置
+	mov	ax,#0x0200+SETUPLEN	! service 2, nr of sectors // 高位表示方式,地位表示目标位置的扇区数
+	int	0x13			! read it  //开始读数
+	jnc	ok_load_setup		! ok - continue   //读入完成后跳转
 	mov	dx,#0x0000
 	mov	ax,#0x0000		! reset the diskette
 	int	0x13
-	j	load_setup
+	j	load_setup  //读数错误后死循环
 
-ok_load_setup:
+ok_load_setup: //获取磁盘驱动器的一系列参数
 
 ! Get disk drive parameters, specifically nr of sectors/track
 
-	mov	dl,#0x00
+	mov	dl,#0x00          //驱动器号
 	mov	ax,#0x0800		! AH=8 is get drive parameters
-	int	0x13
-	mov	ch,#0x00
-	seg cs
-	mov	sectors,cx
-	mov	ax,#INITSEG
-	mov	es,ax
+	int	0x13   
+	mov	ch,#0x00  
+	seg cs //表示下一条语句的操作数在cs中
+	mov	sectors,cx  //此时cx是每磁道的扇区数目
+	mov	ax,#INITSEG  
+	mov	es,ax //设置es段的地址为0x9000, 原因是因为取磁道的参数导致es发生了变化
 
 ! Print some inane message
 
-	mov	ah,#0x03		! read cursor pos
-	xor	bh,bh
-	int	0x10
+	mov	ah,#0x03		! read cursor pos 
+	xor	bh,bh  //异或,两值不同为真,这里等于0表示以图形显示
+	int	0x10  //读取光标位置,存储到dx中,
 	
-	mov	cx,#24
-	mov	bx,#0x0007		! page 0, attribute 7 (normal)
-	mov	bp,#msg1
-	mov	ax,#0x1301		! write string, move cursor
-	int	0x10
+	mov	cx,#24 //显示字符的长度
+	mov	bx,#0x0007		! page 0, attribute 7 (normal)  //
+	mov	bp,#msg1  //显示的字符串,es:bp指向该位置,es是该文件的地址0x90000
+	mov	ax,#0x1301		! write string, move cursor // 写字符串
+	int	0x10 //利用中断执行
 
 ! ok, we've written the message, now
 ! we want to load the system (at 0x10000)
 
-	mov	ax,#SYSSEG
-	mov	es,ax		! segment of 0x010000
-	call	read_it
+	mov	ax,#SYSSEG  
+	mov	es,ax		! segment of 0x010000 //设置es段地址为0x010000 
+	call	read_it //读数据
 	call	kill_motor
 
 ! After that we check which root-device to use. If the device is
 ! defined (!= 0), nothing is done and the given device is used.
 ! Otherwise, either /dev/PS0 (2,28) or /dev/at0 (2,8), depending
 ! on the number of sectors that the BIOS reports currently.
-
+//找根文件设备
 	seg cs
 	mov	ax,root_dev
 	cmp	ax,#0
@@ -149,23 +149,23 @@ head:	.word 0			! current head
 track:	.word 0			! current track
 
 read_it:
-	mov ax,es
-	test ax,#0x0fff
+	mov ax,es //测试输入的段值
+	test ax,#0x0fff //测试ax的值与0x0fff的关系,
 die:	jne die			! es must be at 64kB boundary
 	xor bx,bx		! bx is starting address within segment
-rp_read:
+rp_read:   //判断是否读完,没有读完跳到ok1_read
 	mov ax,es
-	cmp ax,#ENDSEG		! have we loaded all yet?
+	cmp ax,#ENDSEG		! have we loaded all yet? 
 	jb ok1_read
 	ret
-ok1_read:
+ok1_read:  //计算和验证当前磁道需要读取的扇区数目
 	seg cs
-	mov ax,sectors
-	sub ax,sread
-	mov cx,ax
-	shl cx,#9
-	add cx,bx
-	jnc ok2_read
+	mov ax,sectors //取每磁道扇区数
+	sub ax,sread //减去当前已经读入的扇区数目
+	mov cx,ax //未读的扇区
+	shl cx,#9  //将cx左移动9位 ,cx=cx*512
+	add cx,bx //cx保存此时读入的字节数
+	jnc ok2_read  
 	je ok2_read
 	xor ax,ax
 	sub ax,bx
@@ -242,7 +242,7 @@ sectors:
 	.word 0
 
 msg1:
-	.byte 13,10
+	.byte 13,10 //回车换行的ascii码
 	.ascii "Loading system ..."
 	.byte 13,10,13,10
 
@@ -257,4 +257,4 @@ endtext:
 .data
 enddata:
 .bss
-endbss:
+endbss: 
