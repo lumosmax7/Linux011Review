@@ -85,12 +85,12 @@ _system_call:
 	push %fs
 	pushl %edx
 	pushl %ecx		# push %ebx,%ecx,%edx as parameters
-	pushl %ebx		# to the system call
-	movl $0x10,%edx		# set up ds,es to kernel space
+	pushl %ebx		# to the system call  //逆序压栈
+	movl $0x10,%edx		# set up ds,es to kernel space   
 	mov %dx,%ds
-	mov %dx,%es
+	mov %dx,%es //这里system_call将DS和ES寄存器设置为0x10,这个是内核段在GDT表中的索引值
 	movl $0x17,%edx		# fs points to local data space
-	mov %dx,%fs
+	mov %dx,%fs  //将FS设置为0x17,LDT中的用户数据段的选择符,让其指向用户数据段,所以FS是内核空间和用户空间进行数据传递的桥梁
 	call _sys_call_table(,%eax,4)
 	pushl %eax
 	movl _current,%eax

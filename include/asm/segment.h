@@ -1,4 +1,4 @@
-extern inline unsigned char get_fs_byte(const char * addr)
+extern inline unsigned char get_fs_byte(const char * addr) //或者一个字节的用户空间的数据 ,*addr是用户空间的偏移地址,将fs:addr指向的内存地址的一个字节复制并返回
 {
 	unsigned register char _v;
 
@@ -22,7 +22,7 @@ extern inline unsigned long get_fs_long(const unsigned long *addr)
 	return _v;
 }
 
-extern inline void put_fs_byte(char val,char *addr)
+extern inline void put_fs_byte(char val,char *addr) //从核心态拷贝一个字节的数据到用户态
 {
 __asm__ ("movb %0,%%fs:%1"::"r" (val),"m" (*addr));
 }

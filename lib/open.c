@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 
-int open(const char * filename, int flag, ...)
+int open(const char * filename, int flag, ...) //...表示可变参数
 {
 	register int res;
 	va_list arg;

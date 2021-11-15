@@ -28,7 +28,7 @@ __asm__ ("movw %%dx,%%ax\n\t" \
 	: "i" ((short) (0x8000+(dpl<<13)+(type<<8))), \
 	"o" (*((char *) (gate_addr))), \
 	"o" (*(4+(char *) (gate_addr))), \
-	"d" ((char *) (addr)),"a" (0x00080000))
+	"d" ((char *) (addr)),"a" (0x00080000)) //中断处理过程system_call的入口地址
 
 #define set_intr_gate(n,addr) \
 	_set_gate(&idt[n],14,0,addr)
@@ -37,7 +37,7 @@ __asm__ ("movw %%dx,%%ax\n\t" \
 	_set_gate(&idt[n],15,0,addr)
 
 #define set_system_gate(n,addr) \
-	_set_gate(&idt[n],15,3,addr)
+	_set_gate(&idt[n],15,3,addr)   //利用陷阱门来进行处理异常 ,这里0x80属于软中断,软中断又称为编程异常
 
 #define _set_seg_desc(gate_addr,type,dpl,base,limit) {\
 	*(gate_addr) = ((base) & 0xff000000) | \
