@@ -13,7 +13,7 @@ typedef unsigned int size_t;
 
 #define CLOCKS_PER_SEC 100
 
-typedef long clock_t;
+typedef long clock_t; //系统时钟滴答数
 
 struct tm {
 	int tm_sec;

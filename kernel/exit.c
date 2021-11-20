@@ -57,7 +57,7 @@ static void kill_session(void)
  * XXX need to check permissions needed to send signals to process
  * groups, etc. etc.  kill() permissions semantics are tricky!
  */
-int sys_kill(int pid,int sig)
+int sys_kill(int pid,int sig)  
 {
 	struct task_struct **p = NR_TASKS + task;
 	int err, retval = 0;

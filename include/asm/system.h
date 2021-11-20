@@ -1,12 +1,12 @@
 #define move_to_user_mode() \
-__asm__ ("movl %%esp,%%eax\n\t" \
-	"pushl $0x17\n\t" \
-	"pushl %%eax\n\t" \
-	"pushfl\n\t" \
-	"pushl $0x0f\n\t" \
-	"pushl $1f\n\t" \
-	"iret\n" \
-	"1:\tmovl $0x17,%%eax\n\t" \
+__asm__ ("movl %%esp,%%eax\n\t" \ //保存堆栈指针
+	"pushl $0x17\n\t" \  //堆栈选择符
+	"pushl %%eax\n\t" \  //堆栈指针值
+	"pushfl\n\t" \ //eflags
+	"pushl $0x0f\n\t" \ //cs段
+	"pushl $1f\n\t" \ //eip段
+	"iret\n" \  //返回执行标号1
+	"1:\tmovl $0x17,%%eax\n\t" \  //初始化段寄存器
 	"movw %%ax,%%ds\n\t" \
 	"movw %%ax,%%es\n\t" \
 	"movw %%ax,%%fs\n\t" \

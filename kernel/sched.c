@@ -57,7 +57,7 @@ union task_union {
 
 static union task_union init_task = {INIT_TASK,};
 
-long volatile jiffies=0;
+long volatile jiffies=0;   // 在调度中记录滴答数,jiffies记录了从开机到现在的的时钟中断数.	
 long startup_time=0;
 struct task_struct *current = &(init_task.task);
 struct task_struct *last_task_used_math = NULL;
@@ -116,7 +116,7 @@ void schedule(void)
 				}
 			if (((*p)->signal & ~(_BLOCKABLE & (*p)->blocked)) &&
 			(*p)->state==TASK_INTERRUPTIBLE)
-				(*p)->state=TASK_RUNNING;
+				(*p)->state=TASK_RUNNING;  //可中断的唤醒
 		}
 
 /* this is the scheduler proper: */
@@ -141,27 +141,27 @@ void schedule(void)
 	switch_to(next);
 }
 
-int sys_pause(void)
+int sys_pause(void) //主动睡眠
 {
 	current->state = TASK_INTERRUPTIBLE;
 	schedule();
-	return 0;
+	return 0;  
 }
 
 void sleep_on(struct task_struct **p)
 {
-	struct task_struct *tmp;
+	struct task_struct *tmp; 
 
 	if (!p)
 		return;
 	if (current == &(init_task.task))
 		panic("task[0] trying to sleep");
 	tmp = *p;
-	*p = current;
-	current->state = TASK_UNINTERRUPTIBLE;
+	*p = current;  
+	current->state = TASK_UNINTERRUPTIBLE; //切换到不可中断的睡眠态, 只能用wake_up唤醒
 	schedule();
-	if (tmp)
-		tmp->state=0;
+	if (tmp) 
+		tmp->state=0; //唤醒队列中的上一个（tmp）睡眠进程。0换作TASK_RUNNING更好
 }
 
 void interruptible_sleep_on(struct task_struct **p)
@@ -174,8 +174,8 @@ void interruptible_sleep_on(struct task_struct **p)
 		panic("task[0] trying to sleep");
 	tmp=*p;
 	*p=current;
-repeat:	current->state = TASK_INTERRUPTIBLE;
-	schedule();
+repeat:	current->state = TASK_INTERRUPTIBLE; //设置当前任务进入可中断的睡眠, 该睡眠可能需要某些信号就会唤醒,不一定需要wake_up
+	schedule(); //进入调度
 	if (*p && *p != current) {
 		(**p).state=0;
 		goto repeat;
@@ -190,7 +190,7 @@ void wake_up(struct task_struct **p)
 	if (p && *p) {
 		(**p).state=0;
 		*p=NULL;
-	}
+	}//睡眠态唤醒
 }
 
 /*

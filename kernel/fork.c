@@ -16,7 +16,7 @@
 #include <linux/kernel.h>
 #include <asm/segment.h>
 #include <asm/system.h>
-
+// 调用fork()时,根据返回值可以判断子进程还是父进程,子进程返回0,父进程则返回子进程的pid
 extern void write_verify(unsigned long address);
 
 long last_pid=0;
@@ -49,7 +49,7 @@ int copy_mem(int nr,struct task_struct * p)
 		panic("We don't support separate I&D");
 	if (data_limit < code_limit)
 		panic("Bad data_limit");
-	new_data_base = new_code_base = nr * 0x4000000;
+	new_data_base = new_code_base = nr * 0x4000000; //任务号*64MB
 	p->start_code = new_code_base;
 	set_base(p->ldt[1],new_code_base);
 	set_base(p->ldt[2],new_data_base);
@@ -68,18 +68,18 @@ int copy_mem(int nr,struct task_struct * p)
 int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 		long ebx,long ecx,long edx,
 		long fs,long es,long ds,
-		long eip,long cs,long eflags,long esp,long ss)
+		long eip,long cs,long eflags,long esp,long ss) //拷贝父进程的数据
 {
 	struct task_struct *p;
 	int i;
 	struct file *f;
 
-	p = (struct task_struct *) get_free_page();
+	p = (struct task_struct *) get_free_page(); //请求内存
 	if (!p)
 		return -EAGAIN;
 	task[nr] = p;
 	*p = *current;	/* NOTE! this doesn't copy the supervisor stack */
-	p->state = TASK_UNINTERRUPTIBLE;
+	p->state = TASK_UNINTERRUPTIBLE;  //设置子进程的状态为不可中断的睡眠
 	p->pid = last_pid;
 	p->father = current->pid;
 	p->counter = p->priority;
@@ -88,8 +88,8 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	p->leader = 0;		/* process leadership doesn't inherit */
 	p->utime = p->stime = 0;
 	p->cutime = p->cstime = 0;
-	p->start_time = jiffies;
-	p->tss.back_link = 0;
+	p->start_time = jiffies; //开始时间
+	p->tss.back_link = 0; 
 	p->tss.esp0 = PAGE_SIZE + (long) p;
 	p->tss.ss0 = 0x10;
 	p->tss.eip = eip;
@@ -128,11 +128,11 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 		current->executable->i_count++;
 	set_tss_desc(gdt+(nr<<1)+FIRST_TSS_ENTRY,&(p->tss));
 	set_ldt_desc(gdt+(nr<<1)+FIRST_LDT_ENTRY,&(p->ldt));
-	p->state = TASK_RUNNING;	/* do this last, just in case */
+	p->state = TASK_RUNNING;	/* do this last, just in case */ //设置子进程为就绪态
 	return last_pid;
 }
 
-int find_empty_process(void)
+int find_empty_process(void) //为新进程找到pid 以及新建pcb地址的位置
 {
 	int i;
 
@@ -140,7 +140,7 @@ int find_empty_process(void)
 		if ((++last_pid)<0) last_pid=1;
 		for(i=0 ; i<NR_TASKS ; i++)
 			if (task[i] && task[i]->pid == last_pid) goto repeat;
-	for(i=1 ; i<NR_TASKS ; i++)
+	for(i=1 ; i<NR_TASKS ; i++)  
 		if (!task[i])
 			return i;
 	return -EAGAIN;

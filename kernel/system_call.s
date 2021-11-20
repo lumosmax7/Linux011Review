@@ -205,7 +205,7 @@ _sys_execve:
 	ret
 
 .align 2
-_sys_fork:
+_sys_fork: //fork函数的原形 
 	call _find_empty_process
 	testl %eax,%eax
 	js 1f

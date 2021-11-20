@@ -7,7 +7,7 @@
 #define __LIBRARY__
 #include <unistd.h>
 #include <time.h>
-
+//main.c函数是head.s运行后运行的程序
 /*
  * we need this inline - forking from kernel space will result
  * in NO COPY ON WRITE (!!!), until an execve is executed. This
@@ -94,7 +94,7 @@ static void time_init(void)
 	time.tm_mon--;
 	startup_time = kernel_mktime(&time);
 }
-
+//记录内存信息
 static long memory_end = 0;
 static long buffer_memory_end = 0;
 static long main_memory_start = 0;
@@ -134,9 +134,9 @@ void main(void)		/* This really IS void, no error here. */
 	hd_init();
 	floppy_init();
 	sti();
-	move_to_user_mode();
-	if (!fork()) {		/* we count on this going ok */
-		init();
+	move_to_user_mode(); //模拟80中断返回,切换到用户态.
+	if (!fork()) {		/* we count on this going ok */  //fork()子进程返回0,父进程返回子进程的pid
+		init();  //子进程执行init(),这里的进程是进程1;
 	}
 /*
  *   NOTE!!   For any other task 'pause()' would mean we have to get a
@@ -145,7 +145,7 @@ void main(void)		/* This really IS void, no error here. */
  * can run). For task0 'pause()' just means we go check if some other
  * task can run, and if not we return here.
  */
-	for(;;) pause();
+	for(;;) pause(); //父进程暂停,这里是进程0
 }
 
 static int printf(const char *fmt, ...)
@@ -169,29 +169,30 @@ void init(void)
 {
 	int pid,i;
 
-	setup((void *) &drive_info);
-	(void) open("/dev/tty0",O_RDWR,0);
-	(void) dup(0);
-	(void) dup(0);
+	setup((void *) &drive_info);  //加载文件系统
+	//前面的void强制函数不用返回值
+	(void) open("/dev/tty0",O_RDWR,0);  //打开终端设备tty0 ,将文件描述符0与其关联 stdin 
+	(void) dup(0); //关联stdout
+	(void) dup(0);  //关联stderr
 	printf("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,
 		NR_BUFFERS*BLOCK_SIZE);
 	printf("Free mem: %d bytes\n\r",memory_end-main_memory_start);
 	if (!(pid=fork())) {
-		close(0);
-		if (open("/etc/rc",O_RDONLY,0))
+		close(0); //关闭文件描述符0 
+		if (open("/etc/rc",O_RDONLY,0))  //把rc关联到stdin中,并读取
 			_exit(1);
-		execve("/bin/sh",argv_rc,envp_rc);
-		_exit(2);
+		execve("/bin/sh",argv_rc,envp_rc); //执行rc中的配置
+		_exit(2); //退出进程2
 	}
-	if (pid>0)
-		while (pid != wait(&i))
+	if (pid>0)   //父进程操作
+		while (pid != wait(&i)) //等待
 			/* nothing */;
-	while (1) {
+	while (1) {   //进程2退出后,进入这里
 		if ((pid=fork())<0) {
 			printf("Fork failed in init\r\n");
 			continue;
 		}
-		if (!pid) {
+		if (!pid) { //子进程开启一个新的会话并等待输入
 			close(0);close(1);close(2);
 			setsid();
 			(void) open("/dev/tty0",O_RDWR,0);
